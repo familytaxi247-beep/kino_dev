@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinoDev Publisher</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #181818);
+            color: var(--tg-theme-text-color, #ffffff);
+            margin: 0;
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #aaaaaa);
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--tg-theme-button-color, #2481cc);
+            border-radius: 8px;
+            background-color: var(--tg-theme-secondary-bg-color, #202020);
+            color: var(--tg-theme-text-color, #ffffff);
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea {
+            resize: vertical;
+            height: 100px;
+        }
+        .hint {
+            font-size: 12px;
+            color: var(--tg-theme-hint-color, #aaaaaa);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="form-group">
+        <label for="pub_type">Куда публикуем?</label>
+        <select id="pub_type">
+            <option value="module">⚙️ Модули и скрипты</option>
+            <option value="shablon">🎨 Шаблоны</option>
+            <option value="hak">🪓 Хаки и Правки</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="title">Название релиза</label>
+        <input type="text" id="title" placeholder="Например: Парсер Кинопоиска v3.1">
+    </div>
+
+    <div class="form-group">
+        <label for="version">Совместимость (DLE / PHP)</label>
+        <input type="text" id="version" placeholder="Например: DLE 15.x - 17.x, PHP 8.1">
+    </div>
+
+    <div class="form-group">
+        <label for="desc">Описание</label>
+        <textarea id="desc" placeholder="Расскажите, что делает ваше решение..."></textarea>
+    </div>
+
+    <div class="form-group">
+        <label id="link-label" for="link">Ссылка на GitHub / Диск (или код хака)</label>
+        <textarea id="link" placeholder="Вставьте ссылку или код решения..."></textarea>
+        <div class="hint">Файлы (архивы) бот попросит скинуть в чат после заполнения формы.</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Разворачиваем окно на максимум
+
+        // Показываем главную кнопку Telegram "Отправить"
+        tg.MainButton.text = "Опубликовать в KinoDev";
+        tg.MainButton.show();
+
+        // Следим за изменением типа публикации, чтобы менять плейсхолдеры
+        document.getElementById('pub_type').addEventListener('change', (e) => {
+            const label = document.getElementById('link-label');
+            const input = document.getElementById('link');
+            if (e.target.value === 'hak') {
+                label.innerText = "Код хака";
+                input.placeholder = "Вставьте ваш PHP/JS код сюда...";
+            } else {
+                label.innerText = "Ссылка на GitHub / Диск";
+                input.placeholder = "Вставьте ссылку...";
+            }
+        });
+
+        // Клик по главной кнопке Telegram
+        tg.onEvent('mainButtonClicked', function() {
+            const data = {
+                pub_type: document.getElementById('pub_type').value,
+                title: document.getElementById('title').value,
+                version: document.getElementById('version').value,
+                desc: document.getElementById('desc').value,
+                link: document.getElementById('link').value
+            };
+
+            // Проверка на заполнение полей
+            if (!data.title || !data.version || !data.desc) {
+                tg.showAlert("Пожалуйста, заполните основные поля!");
+                return;
+            }
+
+            // Отправляем данные обратно в Python бот
+            tg.sendData(JSON.stringify(data));
+        });
+    </script>
+</body>
+</html>
