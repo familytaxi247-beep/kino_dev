@@ -7,46 +7,79 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background-color: var(--tg-theme-bg-color, #181818);
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
             padding: 20px;
         }
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 18px;
         }
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 6px;
             font-size: 14px;
+            font-weight: bold;
             color: var(--tg-theme-hint-color, #aaaaaa);
         }
         input, textarea, select {
             width: 100%;
-            padding: 10px;
-            border: 1px solid var(--tg-theme-button-color, #2481cc);
+            padding: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #444);
             border-radius: 8px;
             background-color: var(--tg-theme-secondary-bg-color, #202020);
             color: var(--tg-theme-text-color, #ffffff);
             box-sizing: border-box;
             font-size: 16px;
         }
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--tg-theme-button-color, #2481cc);
+            outline: none;
+        }
         textarea {
             resize: vertical;
-            height: 100px;
+            height: 90px;
         }
-        .hint {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #aaaaaa);
+        /* Стили для красивых кнопок загрузки файлов */
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        .btn-file {
+            border: 1px dashed var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-color, #2481cc);
+            background-color: transparent;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            display: block;
+        }
+        .file-input-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .file-status {
+            font-size: 13px;
+            color: #4caf50;
             margin-top: 5px;
+            display: none;
         }
     </style>
 </head>
 <body>
 
     <div class="form-group">
-        <label for="pub_type">Куда публикуем?</label>
+        <label for="pub_type">Раздел публикации</label>
         <select id="pub_type">
             <option value="module">⚙️ Модули и скрипты</option>
             <option value="shablon">🎨 Шаблоны</option>
@@ -55,64 +88,105 @@
     </div>
 
     <div class="form-group">
-        <label for="title">Название релиза</label>
-        <input type="text" id="title" placeholder="Например: Парсер Кинопоиска v3.1">
+        <label for="title">Название</label>
+        <input type="text" id="title" placeholder="Например: Сборщик торрентов v1.0">
     </div>
 
     <div class="form-group">
-        <label for="version">Совместимость (DLE / PHP)</label>
-        <input type="text" id="version" placeholder="Например: DLE 15.x - 17.x, PHP 8.1">
+        <label for="version">Совместимость</label>
+        <input type="text" id="version" placeholder="Например: DLE 17.x, PHP 8.2">
     </div>
 
     <div class="form-group">
         <label for="desc">Описание</label>
-        <textarea id="desc" placeholder="Расскажите, что делает ваше решение..."></textarea>
+        <textarea id="desc" placeholder="Кратко опишите возможности вашего релиза..."></textarea>
+    </div>
+
+    <div class="form-group" id="photo-block">
+        <label>🖼️ Скриншот / Обложка (Необязательно)</label>
+        <div class="file-input-wrapper">
+            <div class="btn-file" id="photo-label">📸 Выбрать скриншот</div>
+            <input type="file" id="photo" accept="image/*">
+        </div>
+        <div class="file-status" id="photo-status">✓ Картинка выбрана</div>
     </div>
 
     <div class="form-group">
-        <label id="link-label" for="link">Ссылка на GitHub / Диск (или код хака)</label>
-        <textarea id="link" placeholder="Вставьте ссылку или код решения..."></textarea>
-        <div class="hint">Файлы (архивы) бот попросит скинуть в чат после заполнения формы.</div>
+        <label id="link-label" for="link">Архив разработки или ссылка</label>
+        <div id="file-block" class="file-input-wrapper" style="margin-bottom: 10px;">
+            <div class="btn-file" id="file-label">📁 Выбрать файл (.zip, .rar)</div>
+            <input type="file" id="file_archive" accept=".zip,.rar,.tar,.gz">
+        </div>
+        <div class="file-status" id="file-status" style="margin-bottom: 10px;">✓ Файл готов к отправке</div>
+        
+        <textarea id="link" placeholder="Или укажите ссылку на GitHub / Яндекс.Диск..."></textarea>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Разворачиваем окно на максимум
+        tg.expand();
 
-        // Показываем главную кнопку Telegram "Отправить"
         tg.MainButton.text = "Опубликовать в KinoDev";
         tg.MainButton.show();
 
-        // Следим за изменением типа публикации, чтобы менять плейсхолдеры
-        document.getElementById('pub_type').addEventListener('change', (e) => {
-            const label = document.getElementById('link-label');
-            const input = document.getElementById('link');
-            if (e.target.value === 'hak') {
-                label.innerText = "Код хака";
-                input.placeholder = "Вставьте ваш PHP/JS код сюда...";
-            } else {
-                label.innerText = "Ссылка на GitHub / Диск";
-                input.placeholder = "Вставьте ссылку...";
+        // Отображение статуса выбора файлов
+        document.getElementById('photo').addEventListener('change', function(e) {
+            if(e.target.files.length > 0) {
+                document.getElementById('photo-status').innerText = `✓ Выбран: ${e.target.files[0].name}`;
+                document.getElementById('photo-status').style.display = 'block';
             }
         });
 
-        // Клик по главной кнопке Telegram
+        document.getElementById('file_archive').addEventListener('change', function(e) {
+            if(e.target.files.length > 0) {
+                document.getElementById('file-status').innerText = `✓ Выбран: ${e.target.files[0].name}`;
+                document.getElementById('file-status').style.display = 'block';
+                document.getElementById('link').style.display = 'none'; // Скрываем поле ссылки, если грузят файл
+            }
+        });
+
+        // Умное переключение полей в зависимости от типа поста
+        document.getElementById('pub_type').addEventListener('change', (e) => {
+            const label = document.getElementById('link-label');
+            const input = document.getElementById('link');
+            const photoBlock = document.getElementById('photo-block');
+            const fileBlock = document.getElementById('file-block');
+
+            if (e.target.value === 'hak') {
+                label.innerText = "Код хака";
+                input.placeholder = "Вставьте ваш PHP/JS код...";
+                input.style.display = 'block';
+                photoBlock.style.style.display = 'none'; // Хакам не нужно фото
+                fileBlock.style.display = 'none';      // Хакам не нужен zip
+                document.getElementById('file-status').style.display = 'none';
+            } else {
+                label.innerText = "Файл архива или ссылка";
+                input.placeholder = "Или укажите ссылку на GitHub / Яндекс.Диск...";
+                input.style.display = 'block';
+                photoBlock.style.display = 'block';
+                fileBlock.style.display = 'block';
+            }
+        });
+
         tg.onEvent('mainButtonClicked', function() {
             const data = {
                 pub_type: document.getElementById('pub_type').value,
                 title: document.getElementById('title').value,
                 version: document.getElementById('version').value,
                 desc: document.getElementById('desc').value,
-                link: document.getElementById('link').value
+                link: document.getElementById('link').value,
+                has_photo: document.getElementById('photo').files.length > 0,
+                has_file: document.getElementById('file_archive').files.length > 0
             };
 
-            // Проверка на заполнение полей
             if (!data.title || !data.version || !data.desc) {
-                tg.showAlert("Пожалуйста, заполните основные поля!");
+                tg.showAlert("Пожалуйста, заполните основные поля релиза!");
                 return;
             }
 
-            // Отправляем данные обратно в Python бот
+            // Передаем текстовые данные боту.
+            // Так как файлы весят много, если юзер выбрал файл/фото, 
+            // бот поймает этот JSON и в чате сразу скажет: "А теперь отправь мне этот файл/фото"
             tg.sendData(JSON.stringify(data));
         });
     </script>
